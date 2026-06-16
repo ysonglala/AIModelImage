@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createTask, listTasks } from "../../../lib/task-store";
+import { createTask, createComboTask, listTasks } from "../../../lib/task-store";
 import { listProviders } from "../../../lib/providers";
 
 export async function GET() {
@@ -13,6 +13,21 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
+    // New modular combo form
+    if (body.productColorId && body.styleId && body.poseId && body.purpose) {
+      const task = await createComboTask({
+        productColorId: body.productColorId,
+        styleId: body.styleId,
+        poseId: body.poseId,
+        purpose: body.purpose,
+        imageCount: Number(body.imageCount || 1),
+        modelRefs: Array.isArray(body.modelRefs) ? body.modelRefs : undefined,
+        provider: body.provider || "nano-banana",
+      });
+      return NextResponse.json(task, { status: 201 });
+    }
+
+    // Legacy ad-hoc form (kept for current homepage UI)
     const task = await createTask({
       prompt: body.prompt || "",
       taskType: body.taskType || "AI 模特上身图",

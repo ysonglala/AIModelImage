@@ -14,9 +14,65 @@ enum TaskStatus {
   failed
 }
 
+enum Purpose {
+  ec_white
+  detail_mood
+  xhs_carousel
+  multi_color
+}
+
+model Product {
+  id         String         @id
+  name       String
+  clientName String?
+  notes      String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  colors     ProductColor[]
+  tasks      ImageTask[]
+}
+
+model ProductColor {
+  id          String      @id
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorCode   String
+  colorName   String
+  garmentRefs Json
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  tasks       ImageTask[]
+
+  @@unique([productId, colorCode])
+}
+
+model StylePreset {
+  id                 String      @id
+  label              String
+  category           String
+  scenePrompt        String
+  lightingPrompt     String
+  styleLock          String
+  negativePrompt     String?
+  defaultAspectRatio String      @default("9:16")
+  defaultResolution  String      @default("1k")
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  tasks              ImageTask[]
+}
+
+model PosePreset {
+  id         String      @id
+  label      String
+  posePrompt String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  tasks      ImageTask[]
+}
+
 model ImageTask {
-  id              String     @id
-  provider        String     @default("mock")
+  id              String        @id
+  provider        String        @default("mock")
   providerTaskId  String?
   title           String
   prompt          String
@@ -27,10 +83,22 @@ model ImageTask {
   fidelity        String
   mood            String
   referenceImages Json
-  status          TaskStatus @default(queued)
-  progress        Int        @default(0)
+  status          TaskStatus    @default(queued)
+  progress        Int           @default(0)
   resultImages    Json
   errorMessage    String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+
+  // New modular fields (all nullable so existing rows survive)
+  productId       String?
+  product         Product?      @relation(fields: [productId], references: [id])
+  productColorId  String?
+  productColor    ProductColor? @relation(fields: [productColorId], references: [id])
+  styleId         String?
+  style           StylePreset?  @relation(fields: [styleId], references: [id])
+  poseId          String?
+  pose            PosePreset?   @relation(fields: [poseId], references: [id])
+  purpose         Purpose?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }

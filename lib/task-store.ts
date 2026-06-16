@@ -1,5 +1,7 @@
 import { prisma } from "./db";
 import { getProvider } from "./providers";
+import { seedPresets } from "./seed/presets";
+import { buildComboPrompt, type ComboInput } from "./prompt-builder";
 import type { ImageTask, ReferenceImages, TaskStatus } from "./types";
 
 const seedImages = [
@@ -54,6 +56,7 @@ function toTask(record: {
 }
 
 export async function seedTasksIfEmpty() {
+  await seedPresets();
   const count = await prisma.imageTask.count();
   if (count > 0) return;
 
@@ -214,4 +217,71 @@ export async function syncTaskWithProvider(id: string, providerKey: string, prov
       errorMessage: snapshot.errorMessage ?? null,
     },
   });
+}
+
+export async function createComboTask(input: ComboInput & { provider?: string }) {
+  await seedTasksIfEmpty();
+
+  const providerKey = input.provider || "nano-banana";
+  const built = await buildComboPrompt(input);
+  const taskId = `task_${Math.random().toString(36).slice(2, 10)}`;
+  const imageCount = Math.max(1, Math.min(4, input.imageCount ?? 1));
+
+  const created = await prisma.imageTask.create({
+    data: {
+      id: taskId,
+      provider: providerKey,
+      title: built.title,
+      prompt: built.prompt,
+      taskType: built.taskType,
+      template: built.template,
+      aspectRatio: built.aspectRatio,
+      imageCount,
+      fidelity: built.fidelity,
+      mood: built.mood,
+      referenceImages: built.referenceImages,
+      status: "queued",
+      progress: 5,
+      resultImages: [],
+      productColorId: input.productColorId,
+      styleId: input.styleId,
+      poseId: input.poseId,
+      purpose: input.purpose,
+    },
+  });
+
+  try {
+    const provider = getProvider(providerKey);
+    const submitted = await provider.submit({
+      taskId,
+      prompt: built.prompt,
+      taskType: built.taskType,
+      template: built.template,
+      aspectRatio: built.aspectRatio,
+      imageCount,
+      fidelity: built.fidelity,
+      mood: built.mood,
+      referenceImages: built.referenceImages,
+    });
+
+    const updated = await prisma.imageTask.update({
+      where: { id: created.id },
+      data: {
+        providerTaskId: submitted.providerTaskId,
+        status: submitted.status,
+        progress: submitted.progress,
+        resultImages: submitted.previewImages ?? [],
+        errorMessage: null,
+      },
+    });
+
+    return toTask(updated);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider submit failed";
+    const failed = await prisma.imageTask.update({
+      where: { id: created.id },
+      data: { status: "failed", progress: 100, errorMessage: message },
+    });
+    throw new Error(toTask(failed).errorMessage || message);
+  }
 }
