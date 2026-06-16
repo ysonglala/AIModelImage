@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  queued
+  processing
+  success
+  failed
+}
+
+model ImageTask {
+  id              String     @id
+  provider        String     @default("mock")
+  providerTaskId  String?
+  title           String
+  prompt          String
+  taskType        String
+  template        String
+  aspectRatio     String
+  imageCount      Int
+  fidelity        String
+  mood            String
+  referenceImages Json
+  status          TaskStatus @default(queued)
+  progress        Int        @default(0)
+  resultImages    Json
+  errorMessage    String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
