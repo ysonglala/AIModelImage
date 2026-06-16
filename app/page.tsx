@@ -51,9 +51,9 @@ export default function HomePage() {
   );
   const [submitting, setSubmitting] = useState(false);
   const [uploadMap, setUploadMap] = useState<Record<UploadKind, UploadState>>({
-    garment: {},
-    model: {},
-    style: {},
+    garment: { uploading: false },
+    model: { uploading: false },
+    style: { uploading: false },
   });
 
   useEffect(() => {

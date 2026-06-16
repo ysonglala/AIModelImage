@@ -45,6 +45,7 @@ _check.js
 _query.sql
 _query_upstream.js
 _probe_i2i.js
+_mark_expired.js
 prisma/dev.db
 prisma/*.db-journal
 public/uploads/
